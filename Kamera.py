@@ -5,7 +5,7 @@ import subprocess
 import sys
 
 PYTHON_310 = "/home/jugendforscht26/env/bin/python3.10"
-CNN_SCRIPT = "/home/jugendforscht26/CNN.py"
+CNN_SCRIPT = "/home/jugendforscht26/RasberryPi2/CNN.py"
 
 
 def main():
