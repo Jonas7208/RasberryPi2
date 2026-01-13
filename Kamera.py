@@ -3,6 +3,7 @@ from datetime import datetime
 import time
 import subprocess
 import sys
+import os
 
 PYTHON_310 = "/home/jugendforscht26/env/bin/python3.10"
 CNN_SCRIPT = "/home/jugendforscht26/RasberryPi2/CNN.py"
@@ -34,6 +35,12 @@ def main():
     if result.returncode != 0:
         print("Fehler bei Inferenz:")
         print(result.stderr)
+
+    try:
+        os.remove(filename)
+        print(f"Datei '{filename}' wurde erfolgreich gelöscht.")
+    except FileNotFoundError:
+        print(f"Datei '{filename}' nicht gefunden.")
 
 
 if __name__ == "__main__":
