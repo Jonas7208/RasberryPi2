@@ -10,8 +10,9 @@ Kamera_Script = "/home/jugendforscht26/RasberryPi2/Kamera.py"
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
 
-MOTOR1_PINS = (10, 9, 25, 11)
-MOTOR2_PINS = (17, 22, 23, 24)
+MOTOR1_PINS = (17, 22, 23, 24)
+MOTOR2_PINS = (10, 9, 25, 11)
+
 
 FULL_STEP = [
     [1, 0, 1, 0],
@@ -40,7 +41,7 @@ POSITIONS = {
 }
 Kategorie_zu_Positonen = {
     "cardboard": 1,
-    "paper":1,
+    "paper": 1,
     "plastic": 2,
     "metal": 2,
     "glass": 3,
@@ -55,10 +56,11 @@ SEQUENCES = {
 
 class StepperMotor:
 
-    def __init__(self, pins, name="Motor", steps_per_rev=200):
+    def __init__(self, pins, name="Motor", steps_per_rev=200, gear_ratio=1.0):
         self.pins = pins
         self.name = name
         self.steps_per_rev = steps_per_rev
+        self.gear_ratio = gear_ratio
         self.current_position = 0.0
 
         for pin in self.pins:
@@ -83,7 +85,7 @@ class StepperMotor:
             self._set_step(sequence[index])
             time.sleep(delay)
 
-        degrees = (steps / self.steps_per_rev) * 360.0
+        degrees = (steps / (self.steps_per_rev * self.gear_ratio)) * 360.0
         direction = 1 if clockwise else -1
         self.current_position = (self.current_position + direction * degrees) % 360
 
@@ -103,7 +105,7 @@ class StepperMotor:
         degrees_to_move = abs(diff)
 
         multiplier = 2 if mode == "half" else 1
-        steps = int((degrees_to_move / 360.0) * self.steps_per_rev * multiplier)
+        steps = int((degrees_to_move / 360.0) * self.steps_per_rev * multiplier * self.gear_ratio)
 
         if steps > 0:
             self.rotate_steps(steps, delay, clockwise, mode)
@@ -141,7 +143,6 @@ def move_motors_simultaneously(motors, action, *args, **kwargs):
         motor.stop()
 
 
-
 def get_char():
     fd = sys.stdin.fileno()
     old = termios.tcgetattr(fd)
@@ -150,6 +151,7 @@ def get_char():
         return sys.stdin.read(1)
     finally:
         termios.tcsetattr(fd, termios.TCSADRAIN, old)
+
 
 def Kamera_erkennung():
     print("Starte Kamera und Erkennung...")
@@ -177,8 +179,8 @@ def Kamera_erkennung():
 
 
 if __name__ == "__main__":
-    motor1 = StepperMotor(MOTOR1_PINS, "Motor 1", steps_per_rev=200)
-    motor2 = StepperMotor(MOTOR2_PINS, "Motor 2", steps_per_rev=200)
+    motor1 = StepperMotor(MOTOR1_PINS, "Motor 1", steps_per_rev=200, gear_ratio=2.0)
+    motor2 = StepperMotor(MOTOR2_PINS, "Motor 2", steps_per_rev=200, gear_ratio=2.0)
     motors = [motor1, motor2]
 
     delay = 0.005
@@ -198,8 +200,8 @@ if __name__ == "__main__":
                     move_motors_simultaneously(motors, "move_to_position", position, delay)
                     print("Warte 1 Sekunde...")
                     time.sleep(1)
-                    print("🔧 Auswurf...")
-                    motor1.rotate_steps(200, 0.005, True)
+                    print("Auswurf...")
+                    motor1.rotate_steps(int(200 * motor1.gear_ratio), 0.005, True)
                     time.sleep(1)
                     print("Fahre zurück zur Home-Position...")
                     move_motors_simultaneously(motors, "move_to_home", delay)
@@ -211,7 +213,7 @@ if __name__ == "__main__":
                 pos = int(cmd)
                 move_motors_simultaneously(motors, "move_to_position", pos, delay)
                 time.sleep(1)
-                motor1.rotate_steps(200, 0.005, True)
+                motor1.rotate_steps(int(200 * motor1.gear_ratio), 0.005, True)
                 time.sleep(1)
                 move_motors_simultaneously(motors, "move_to_home", delay)
 
