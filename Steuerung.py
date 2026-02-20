@@ -213,8 +213,11 @@ if __name__ == "__main__":
                 pos = int(cmd)
                 move_motors_simultaneously(motors, "move_to_position", pos, delay)
                 time.sleep(1)
+                motor2.hold()
                 motor1.rotate_steps(int(200 * motor1.gear_ratio), 0.005, True)
+                motor2.stop()
                 time.sleep(1)
+
                 move_motors_simultaneously(motors, "move_to_home", delay)
 
             elif cmd == "h":
