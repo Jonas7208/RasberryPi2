@@ -5,6 +5,9 @@ import tty
 import termios
 import threading
 import subprocess
+import os
+import numpy as np
+from PIL import Image
 
 Kamera_Script = "/home/jugendforscht26/RasberryPi2/Kamera.py"
 GPIO.setmode(GPIO.BCM)
@@ -53,6 +56,32 @@ SEQUENCES = {
     "half": HALF_STEP,
 }
 
+
+# --- Hintergrundentfernung aus Kamera.py integriert ---
+
+def remove_background(input_path: str, output_path: str, threshold: int = 230) -> bool:
+    """Entfernt weißen Hintergrund aus einem Bild und speichert es mit Transparenz."""
+    try:
+        print("Entferne weißen Hintergrund...")
+        img = Image.open(input_path).convert("RGBA")
+        data = np.array(img)
+
+        r, g, b, a = data[:, :, 0], data[:, :, 1], data[:, :, 2], data[:, :, 3]
+
+        white_mask = (r > threshold) & (g > threshold) & (b > threshold)
+        data[white_mask] = [255, 255, 255, 0]
+
+        result = Image.fromarray(data)
+        result.save(output_path)
+        print(f"Hintergrund entfernt. Gespeichert als: {output_path}")
+        return True
+
+    except Exception as e:
+        print(f"Fehler bei Hintergrundentfernung: {e}")
+        return False
+
+
+# --- StepperMotor-Klasse ---
 
 class StepperMotor:
 
@@ -154,6 +183,7 @@ def get_char():
 
 
 def Kamera_erkennung():
+    """Startet die Kamera, entfernt den Hintergrund und führt die CNN-Erkennung durch."""
     print("Starte Kamera und Erkennung...")
 
     result = subprocess.run(
@@ -168,14 +198,32 @@ def Kamera_erkennung():
         print(f"Fehler bei Kamera/CNN:\n{result.stderr}")
         return None
 
+    kategorie = None
+    bildpfad = None
+
     for line in result.stdout.splitlines():
         if line.startswith("Kategorie:"):
             kategorie = line.split(":", 1)[1].strip().lower()
-            print(f"Kategorie erkannt: {kategorie}")
-            return kategorie
+        elif line.startswith("Bild:"):
+            bildpfad = line.split(":", 1)[1].strip()
 
-    print("Keine Kategorie in der Ausgabe gefunden.")
-    return None
+    if kategorie:
+        print(f"Kategorie erkannt: {kategorie}")
+
+    # Hintergrundentfernung auf das aufgenommene Bild anwenden
+    if bildpfad and os.path.exists(bildpfad):
+        no_bg_path = os.path.splitext(bildpfad)[0] + "_no_bg.png"
+        if remove_background(bildpfad, no_bg_path):
+            print(f"Bild ohne Hintergrund: {no_bg_path}")
+            # Originalbild aufräumen
+            try:
+                os.remove(bildpfad)
+            except FileNotFoundError:
+                pass
+    elif bildpfad:
+        print(f"Bilddatei nicht gefunden: {bildpfad}")
+
+    return kategorie
 
 
 if __name__ == "__main__":
